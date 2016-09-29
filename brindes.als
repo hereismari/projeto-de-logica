@@ -1,23 +1,23 @@
 module brindes
 
-one sig dono {}
+one sig Dono {}
 
-sig registro {
-	id: one id
+sig Registro {
+	id: one Id
 }
-some sig funcionario {
-	registros: set registro
+some sig Funcionario {
+	registros: set Registro
 }
-some sig vendedor extends funcionario {}
-sig operador extends funcionario {}
-some sig promotor extends funcionario {}
+some sig Vendedor extends Funcionario {}
+sig Operador extends Funcionario {}
+some sig Promotor extends Funcionario {}
 
-sig brinde {}
+sig Brinde {}
 
 sig Item {}
-sig id {}
-sig cliente {
-		id: one id,
+sig Id {}
+sig Cliente {
+		id: one Id,
 		itens: set Item
 }
 
