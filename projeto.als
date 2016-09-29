@@ -12,7 +12,7 @@ sig Id {}
 sig Cliente {id: one Id }
 
 abstract sig Brinde {}
-sig Bone, Adesivo, Chaveiros extends Brinde {}
+one sig Bone, Adesivo, Chaveiros extends Brinde {}
 
 abstract sig Item { compra : Compra }
 sig Roupa, Calcado extends Item {}
@@ -44,13 +44,14 @@ fact {
 	all c1: Cliente, c2: Cliente | c1 != c2 implies c1.id != c2.id
 }
 
-/*
+// Sabe-se que a loja tem 3 a 4 operadores de caixa, 2 promotores de cartão e 3 a 5 vendedores.
+// se escopo < 8 nao eh achada uma instancia valida (investigar isso!!!), se esse fato for retirado deve dar certo
 fact {
-	3 <= #Vendedor and #Vendedor <= 5
-	3 <= #Caixa and #Caixa <= 4
+	#Vendedor >= 3 and #Vendedor <= 5
 	#Promotor = 2
+	#Caixa >= 3 and	 #Caixa <= 4
 }
-*/
+
 /*
 fact {
 	all v:Vendedor | v.brinde = True <=> some c:vendedor.v | c in Roupa.compra and c in Calcado.compra
@@ -60,4 +61,4 @@ fact {
 // --------------------------------- Run -------------------------------
 
 pred show [] {}
-run show for 3
+run show for 8
