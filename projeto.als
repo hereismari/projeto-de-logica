@@ -18,7 +18,7 @@ sig Cliente {
 abstract sig Item {}
 sig Roupa, Calcado extends Item {}
 
-abstract sig Funcionario { brinde: Bool -> Tempo }
+abstract sig Funcionario { brinde: set Bool -> Tempo }
 
 sig Vendedor, Caixa extends Funcionario {
 	vendas: set Venda -> Tempo 
@@ -34,8 +34,8 @@ one sig Vista, Dividido, Prazo extends Pagamento {}
 sig Cartao {}
 
 sig Venda {
-	pagamento: Pagamento -> Tempo,
-	itens: Item -> Tempo
+	pagamento: set Pagamento -> Tempo,
+	itens: set Item -> Tempo
 }
 
 // TEMPORAAAAAARIO ==>> TIRAR MESMO!
@@ -43,16 +43,6 @@ abstract sig Jonas {}
 
 one sig Dependente, Titular extends Jonas {}
 // -------------------------------- Facts -------------------------------
-
-fact {
-	no Cliente.cartoes.first
-	no Cliente.vendas.first
-	no Vendedor.vendas.first
-	no Caixa.vendas.first
-	no Promotor.cartoes.first
-	no Venda.itens.first
-	Funcionario.brinde.first = False
-}
 
 fact {
 	all f:Funcionario, t:Tempo | one f.brinde.t
@@ -105,6 +95,53 @@ fact {
 	all v:Vendedor, t:Tempo | v.brinde.t = True implies some ve:v.vendas.t | some ve.itens.t & Roupa and some ve.itens.t & Calcado 
 	all p:Promotor, t:Tempo | p.brinde.t = True implies #p.cartoes.t >= 2 and some c:p.cartoes.t, tc:Tempo | some tc[cartoes].c.Dependente and no prev[tc][cartoes].c.Titular
 	all c:Caixa, t:Tempo | c.brinde.t = True implies Dividido + Prazo in c.vendas.t.pagamento.t
+}
+
+
+
+//----------------------------- Predicados ---------------------------
+
+pred init[t:Tempo] {
+	no Cliente.cartoes.t
+	no Cliente.vendas.t
+	no Vendedor.vendas.t
+	no Caixa.vendas.t
+	no Promotor.cartoes.t
+	no Venda.itens.t
+	Funcionario.brinde.t = False
+}
+
+pred realizarVenda[cl:Cliente, ca:Caixa, v:Vendedor, i:Item, p:Pagamento, t1, t2:Tempo] {
+	some ve:Venda |
+		t1[ve.itens] = none and t2[ve.itens] = i and
+		t1[ve.pagamento] = none and t2[ve.pagamento] = p and
+		ve not in t1[cl.vendas] and ve in t2[cl.vendas] and
+		ve not in t1[ca.vendas] and ve in t2[ca.vendas] and
+		ve not in t1[v.vendas] and ve in t2[v.vendas] and
+}
+
+pred fazerCartao[c:Cliente, d:Cliente, p:Promotor, t1, t2:Tempo] {}
+
+pred registrarDependente[c:Cartao, d:Cliente, t1, t2:Tempo] {
+	d not in t1[Cliente<:cartoes].c.Jonas and d in t1[Cliente<:cartoes].c.Dependente
+}
+
+pred darBrinde[f:Funcionario, t1, t2:Tempo] {
+	f.brinde.t1 = False and f.brinde.t2 = True
+}
+
+pred removerCartao[c:Cartao, t1, t2:Tempo] {
+	some t1[Cliente<:cartoes].c.Titular and no t2[Cliente<:cartoes].c
+}
+
+fact traces {
+	init[first]
+	all t1: Tempo - last | let t2 = t1.next |
+		(some cl:Cliente, ca:Caixa, v:Vendedor, p:Pagamento, i:Item | realizarVenda[cl, ca, v, i, p, t1, t2]) or
+		(some c:Cliente, d:Cliente, p:Promotor | fazerCartao[c, d, p, t1, t2]) or
+		(some c:Cartao, d:Cliente, t1, t2:Tempo | registrarDependente[c, d, t1, t2]) or
+		(some f:Funcionario | darBrinde[f, t1, t2]) or
+		(some c:Cartao | removerCartao[c, t1, t2])
 }
 
 // --------------------------------- Run -------------------------------
