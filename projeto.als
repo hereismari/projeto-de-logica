@@ -11,15 +11,18 @@ one sig True, False extends Bool {}
 sig Tempo {}
 
 sig Cliente {
-	cartao : set Jonas -> Cartao -> Tempo,
-	compras : set Compra -> Tempo
+	cartoes: set Jonas -> Cartao -> Tempo,
+	compras: set Compra -> Tempo
 }
 
-abstract sig Item { compra : Compra }
+abstract sig Item { compra: Compra }
 sig Roupa, Calcado extends Item {}
 
-abstract sig Funcionario { brinde : Bool}
-sig Vendedor, Caixa, Promotor extends Funcionario {}
+abstract sig Funcionario { brinde: Bool}
+sig Vendedor, Caixa extends Funcionario {}
+sig Promotor extends Funcionario {
+	cartoes: set Cartao -> Tempo
+}
 
 abstract sig Pagamento {}
 one sig Vista, Dividido, Prazo extends Pagamento {}
@@ -27,9 +30,9 @@ one sig Vista, Dividido, Prazo extends Pagamento {}
 sig Cartao {}
 
 sig Compra {
-	vendedor : Vendedor,
+	vendedor: Vendedor,
 	pagamento: Pagamento,
-	caixa : Caixa
+	caixa: Caixa
 }
 
 // TEMPORAAAAAARIO ==>> TIRAR MESMO!
@@ -46,8 +49,12 @@ fact {
 // Esse fato garante que todo cartão tem exatamente um titular
 // Nao pode ser dependente e titular ao mesmo tempo
 fact {
-	all c:Cartao | one cartao.Tempo.c.Titular
-	all cl:Cliente | no cl.cartao[Titular] & cl.cartao[Dependente]
+	all c:Cartao | one cartoes.Tempo.c.Titular
+	all cl:Cliente | no cl.cartoes[Titular] & cl.cartoes[Dependente]
+}
+
+fact {
+	all c:Cartao | one (cartoes).Tempo.c
 }
 
 // Sabe-se que a loja tem 3 a 4 operadores de caixa, 2 promotores de cartão e 3 a 5 vendedores.
