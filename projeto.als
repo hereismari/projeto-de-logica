@@ -71,7 +71,7 @@ fact {
 // Um cliente sem cartão da loja não pode fazer compras no cartão.
 fact {
 	all c:Cliente | no c.cartoes[Titular] & c.cartoes[Dependente]
-	all c:Cliente, t:Tempo | no c.cartoes.t implies no c.vendas.t.pagamento.Tempo & (Prazo + Dividido)
+	all c:Cliente, t:Tempo | no c.cartoes.t implies no c.vendas.t.pagamento[Prazo + Dividido]
 }
 
 // Cada item é vendido exatamente uma vez.
@@ -102,15 +102,14 @@ fact {
 		no (Cliente<:vendas).t.v and no (Caixa<:vendas).t.v and no (Vendedor<:vendas).t.v and no v.itens.t  and no v.pagamento.t
 }
 
-// Há 3 a 4 operadores de caixa.
-// Há 2 promotores de cartão.
 // Há 3 a 5 vendedores.
-/*fact {
+// Há 2 promotores de cartão.
+// Há 3 a 4 operadores de caixa.
+fact {
 	#Vendedor >= 3 and #Vendedor <= 5
 	#Promotor = 2
-	#Caixa >= 3 and	 #Caixa <= 4
-}*/
-
+	#Caixa >= 3 and #Caixa <= 4
+}
 
 //----------------------------- Predicados ---------------------------
 
@@ -124,19 +123,17 @@ pred init[t:Tempo] {
 	Funcionario.brinde.t = False
 }
 
-pred realizarVenda[cl:Cliente, ca:Caixa, v:Vendedor, i:Item, p:Pagamento, t1, t2:Tempo] {
+pred realizarVenda[cl:Cliente, ca:Caixa, v:Vendedor, p:Pagamento, t1, t2:Tempo] {
 	some ve:Venda |
-		t1[ve.itens] = none and t2[ve.itens] = i and
 		t1[ve.pagamento] = none and t2[ve.pagamento] = p and
 		ve not in t1[cl.vendas] and ve in t2[cl.vendas] and
 		ve not in t1[ca.vendas] and ve in t2[ca.vendas] and
 		ve not in t1[v.vendas] and ve in t2[v.vendas]
 }
 
-pred fazerCartao[titular:Cliente, deps: Cliente, p:Promotor, t1, t2:Tempo] {
+pred fazerCartao[cl:Cliente, p:Promotor, t1, t2:Tempo] {
 	some c:Cartao |
-		titulares[c, t1] = none and titulares[c, t2] = titular and
-		dependentes[c, t1] = none and dependentes[c, t2] = deps and
+		titulares[c, t1] = none and titulares[c, t2] = cl and
 		t1[Promotor<:cartoes].c = none and t2[Promotor<:cartoes].c = p
 }
 
@@ -154,19 +151,21 @@ pred removerCartao[c:Cartao, t1, t2:Tempo] {
 
 fact traces {
 	init[first]
+	some v:Vendedor | True in v.brinde.Tempo
 
 	// De um tempo pro próximo, pelo menos uma operação deve ser realizada
 	all t1:Tempo-last | let t2 = t1.next |
-		(some cl:Cliente, ca:Caixa, v:Vendedor, p:Pagamento, i:Item | realizarVenda[cl, ca, v, i, p, t1, t2]) or
-		(some titular:Cliente, deps: Cliente, p:Promotor | fazerCartao[titular, deps, p, t1, t2]) or
+		(some cl:Cliente, ca:Caixa, v:Vendedor, p:Pagamento | realizarVenda[cl, ca, v, p, t1, t2]) or
+		(some c:Cliente, p:Promotor | fazerCartao[c, p, t1, t2]) or
 		(some c:Cartao, d:Cliente, t1, t2:Tempo | registrarDependente[c, d, t1, t2]) or
 		(some c:Cartao | removerCartao[c, t1, t2])
 
 	// Os brindes são distribuidos sempre e apenas no último tempo
 	let t1 = last.prev, t2 = last |
-		(all v:Vendedor | some ve:v.vendas.t2 | some roupas[ve, t2] and some calcados[ve, t2] implies darBrinde[v, t1, t2]) and
-		(all c:Caixa |  c.brinde.t2 = True implies Dividido + Prazo in c.vendas.t2.pagamento.Tempo implies darBrinde[c, t1, t2]) and
-		(all p:Promotor | #p.cartoes.t2 >= 2 and some c:p.cartoes.t2, tc:Tempo | some dependentes[c, tc] and no titulares[c, tc.prev] implies darBrinde[p, t1, t2])
+		(all f:Funcionario | f.brinde.t1 = False) and
+		(all v:Vendedor | some ve:v.vendas.t2 | some roupas[ve, t2] and some calcados[ve, t2] iff darBrinde[v, t1, t2]) and
+		(all c:Caixa | Dividido + Prazo in c.vendas.t2.pagamento.Tempo iff darBrinde[c, t1, t2]) and
+		(all p:Promotor | #p.cartoes.t2 >= 2 and some c:p.cartoes.t2, tc:Tempo | some dependentes[c, tc] and no titulares[c, tc.prev] iff darBrinde[p, t1, t2])
 }
 
 //------------------------------- Funções -----------------------------
@@ -189,13 +188,28 @@ fun roupas[v:Venda, t:Tempo] : set Roupa {
 
 //-------------------------------- Asserts -----------------------------
 
+// Se um cliente já fez uma compra no cartão quer dizer que ele teve um cartão em algum momento.
 assert a1 {
-	
+	all c:Cliente | some c.vendas.Tempo.pagamento[Prazo + Dividido] implies some c.cartoes
+}
+
+// Um funcionário não pode ter ganho um brinde antes do último tempo.
+assert a2 {
+	all f:Funcionario, t:Tempo-last | f.brinde.t = False
+}
+
+// Se o cliente é titular de um cartão, quer dizer que ele fez o cartão em algum momento.
+assert a3 {
+	all c:Cliente | some c.cartoes[Titular] implies some p:Promotor, t:Tempo | fazerCartao[c, p, t.prev, t]
 }
 
 // --------------------------------- Run -------------------------------
 
 pred show [] {}
-run show for 5//4 but 11 Funcionario
 
-//check a1 for 5 but 8 Tempo
+run show for 4 but 11 Funcionario
+
+check a1 for 4 but 11 Funcionario
+check a2 for 4 but 11 Funcionario
+check a3 for 4 but 11 Funcionario
+
