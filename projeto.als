@@ -7,7 +7,6 @@ one sig True, False extends Bool {}
 
 // ------------------------------- Signatures ---------------------------------
 
-one sig Dono {}
 sig Id {}
 sig Cliente {id: one Id }
 
